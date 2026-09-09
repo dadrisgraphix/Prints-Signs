@@ -3,349 +3,1790 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Branch Dashboard - Dadris Prints</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        /* ==========================================
+           RESPONSIVE FOUNDATION
+           ========================================== */
+
+        html,
+        body {
+            width: 100%;
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            min-width: 0;
+        }
+
+        /* Prevent flex/grid children from forcing
+           their parent wider than the viewport */
+        main,
+        section,
+        article,
+        div,
+        aside,
+        nav {
+            min-width: 0;
+        }
+
+        /* ==========================================
+           TABLE RESPONSIVENESS
+           ========================================== */
+
+        .responsive-table {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+
+        .responsive-table table {
+            width: 100%;
+            min-width: 720px;
+        }
+
+        /* ==========================================
+           MOBILE SIDEBAR
+           ========================================== */
+
+        #sidebar {
+            transition:
+                transform 0.25s ease-in-out,
+                box-shadow 0.25s ease-in-out;
+        }
+
+        #mobile-sidebar-overlay {
+            transition: opacity 0.2s ease-in-out;
+        }
+
+        /* ==========================================
+           MODALS
+           ========================================== */
+
+        .responsive-modal {
+            width: min(24rem, calc(100vw - 2rem));
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* ==========================================
+           MOBILE BREAKPOINT
+           ========================================== */
+
+        @media (max-width: 767px) {
+
+            body {
+                display: block !important;
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            /* Sidebar becomes off-canvas */
+            #sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                z-index: 60;
+                width: min(18rem, 85vw);
+                height: 100vh;
+                transform: translateX(-100%);
+                box-shadow: 10px 0 30px rgba(0, 0, 0, 0.25);
+            }
+
+            #sidebar.mobile-sidebar-open {
+                transform: translateX(0);
+            }
+
+            /* Main takes full phone width */
+            #main-content {
+                width: 100%;
+                max-width: 100%;
+                height: 100vh;
+                padding: 1rem;
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            /* Mobile top bar */
+            #mobile-header {
+                display: flex !important;
+            }
+
+            /* Page headings */
+            .page-heading {
+                font-size: 1.35rem;
+                line-height: 1.35;
+            }
+
+            /* Header sections with buttons */
+            .mobile-header-actions {
+                display: flex;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.75rem;
+            }
+
+            .mobile-header-actions > button {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Dashboard cards */
+            .dashboard-card {
+                padding: 1rem;
+            }
+
+            .dashboard-card .stat-row {
+                gap: 0.75rem;
+            }
+
+            .dashboard-card .stat-row span {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .dashboard-card .stat-row strong {
+                flex-shrink: 0;
+                white-space: nowrap;
+                font-size: 0.95rem;
+            }
+
+            /* Modals */
+            .modal-backdrop {
+                padding: 0.75rem;
+                align-items: flex-start;
+                padding-top: 1rem;
+            }
+
+            .responsive-modal {
+                width: 100%;
+                max-width: 100%;
+                max-height: calc(100vh - 2rem);
+                padding: 1rem;
+                border-radius: 0.75rem;
+            }
+
+            /* Form action buttons */
+            .modal-actions {
+                flex-direction: column-reverse;
+                width: 100%;
+                gap: 0.5rem;
+            }
+
+            .modal-actions button {
+                width: 100%;
+                margin: 0 !important;
+            }
+
+            /* Tables */
+            .responsive-table {
+                border-radius: 0.5rem;
+            }
+
+            .responsive-table table {
+                min-width: 720px;
+            }
+
+            /* Design / production cards */
+            #grid-design,
+            #grid-production,
+            #grid-fabrication {
+                grid-template-columns: minmax(0, 1fr) !important;
+            }
+
+            /* Avoid oversized text */
+            h1,
+            h2,
+            h3 {
+                overflow-wrap: anywhere;
+            }
+
+            /* Selects and inputs */
+            input,
+            select,
+            textarea,
+            button {
+                max-width: 100%;
+            }
+
+        }
+
+        /* ==========================================
+           VERY SMALL PHONES
+           ========================================== */
+
+        @media (max-width: 380px) {
+
+            #main-content {
+                padding: 0.75rem;
+            }
+
+            .dashboard-card {
+                padding: 0.875rem;
+            }
+
+            .page-heading {
+                font-size: 1.2rem;
+            }
+
+            .responsive-table table {
+                min-width: 680px;
+            }
+
+        }
+
+        /* ==========================================
+           TABLET
+           ========================================== */
+
+        @media (min-width: 768px) and (max-width: 1023px) {
+
+            #main-content {
+                padding: 1.5rem;
+            }
+
+            .responsive-table table {
+                min-width: 700px;
+            }
+
+        }
+
+    </style>
 </head>
+
+
 <body class="bg-gray-50 flex h-screen font-sans text-gray-800 overflow-hidden">
 
-    <!-- Sidebar Navigation -->
-    <aside class="w-64 bg-gray-900 text-white flex flex-col flex-shrink-0">
+
+    <!-- ==========================================
+         MOBILE SIDEBAR OVERLAY
+         ========================================== -->
+
+    <div
+        id="mobile-sidebar-overlay"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 z-50"
+        onclick="closeMobileSidebar()"
+    ></div>
+
+
+    <!-- ==========================================
+         SIDEBAR NAVIGATION
+         ========================================== -->
+
+    <aside
+        id="sidebar"
+        class="w-64 bg-gray-900 text-white flex flex-col flex-shrink-0"
+    >
+
+        <!-- Sidebar Header -->
+
         <div class="p-6">
-            <h1 class="text-2xl font-bold text-green-500 tracking-wider">DADRIS</h1>
-            <p class="text-xs text-gray-400 mt-1 mb-4 font-bold tracking-widest">PRINTS & SIGNS</p>
-            <div class="bg-gray-800 rounded p-3 border border-gray-700">
-                <p class="text-xs text-gray-400 uppercase">Current Branch</p>
-                <p class="text-sm font-bold text-green-400" id="sidebar-branch-name">Loading...</p>
+
+            <div class="flex items-start justify-between">
+
+                <div class="min-w-0">
+
+                    <h1 class="text-2xl font-bold text-green-500 tracking-wider">
+                        DADRIS
+                    </h1>
+
+                    <p class="text-xs text-gray-400 mt-1 mb-4 font-bold tracking-widest">
+                        PRINTS & SIGNS
+                    </p>
+
+                </div>
+
+
+                <!-- Mobile close button -->
+
+                <button
+                    type="button"
+                    onclick="closeMobileSidebar()"
+                    class="md:hidden text-gray-400 hover:text-white text-2xl leading-none ml-3"
+                    aria-label="Close menu"
+                >
+                    &times;
+                </button>
+
             </div>
+
+
+            <!-- Current Branch -->
+
+            <div class="bg-gray-800 rounded p-3 border border-gray-700">
+
+                <p class="text-xs text-gray-400 uppercase">
+                    Current Branch
+                </p>
+
+                <p
+                    class="text-sm font-bold text-green-400 break-words"
+                    id="sidebar-branch-name"
+                >
+                    Loading...
+                </p>
+
+            </div>
+
         </div>
-        
-        <nav class="flex-1 px-4 space-y-2 mt-2 overflow-y-auto" id="nav-menu">
-            <button onclick="toggleView('view-overview', this)" class="nav-btn w-full text-left px-4 py-3 rounded bg-gray-800 text-white font-medium transition">
+
+
+        <!-- Navigation -->
+
+        <nav
+            class="flex-1 px-4 space-y-2 mt-2 overflow-y-auto"
+            id="nav-menu"
+        >
+
+            <button
+                onclick="toggleView('view-overview', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded bg-gray-800 text-white font-medium transition"
+            >
                 Dashboard Overview
             </button>
-            <button onclick="toggleView('view-projects', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-projects', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Projects & Sales
             </button>
-            <button onclick="toggleView('view-design', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-design', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Design Board
             </button>
-            <button onclick="toggleView('view-production', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-production', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Production Queue
             </button>
-            <button onclick="toggleView('view-fabrication', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-fabrication', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Fabrication
             </button>
-            <button onclick="toggleView('view-payments', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-payments', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Payments Ledger
             </button>
-            <button onclick="toggleView('view-expenses', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-expenses', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Expenses Ledger
             </button>
-            <button onclick="toggleView('view-clients', this)" class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition">
+
+
+            <button
+                onclick="toggleView('view-clients', this); closeMobileSidebar()"
+                class="nav-btn w-full text-left px-4 py-3 rounded hover:bg-gray-800 text-gray-400 transition"
+            >
                 Clients & Leads
             </button>
+
         </nav>
 
+
+        <!-- Sidebar Footer -->
+
         <div class="p-4 border-t border-gray-800">
-            <div class="text-sm mb-2 text-gray-400">User: <span id="user-role-display" class="text-white font-semibold">...</span></div>
-            <button onclick="document.getElementById('modal-password').classList.remove('hidden')" class="w-full text-left text-blue-400 hover:text-blue-300 transition py-1 text-sm mb-2">
+
+            <div class="text-sm mb-2 text-gray-400 break-words">
+
+                User:
+
+                <span
+                    id="user-role-display"
+                    class="text-white font-semibold"
+                >
+                    ...
+                </span>
+
+            </div>
+
+
+            <button
+                onclick="document.getElementById('modal-password').classList.remove('hidden'); document.body.classList.add('overflow-hidden'); closeMobileSidebar()"
+                class="w-full text-left text-blue-400 hover:text-blue-300 transition py-2 text-sm mb-1"
+            >
                 Change Password
             </button>
-            <button onclick="handleLogout()" class="w-full text-left text-red-400 hover:text-red-300 transition py-1 text-sm font-bold">
+
+
+            <button
+                onclick="handleLogout()"
+                class="w-full text-left text-red-400 hover:text-red-300 transition py-2 text-sm font-bold"
+            >
                 &larr; Logout
             </button>
+
         </div>
+
     </aside>
 
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-1 p-8 overflow-y-auto w-full bg-gray-100">
-        
-        <!-- OVERVIEW TAB -->
-        <div id="view-overview" class="view-section block">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Dashboard Overview</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <!-- Today's Stats -->
-                <div class="bg-white p-6 rounded-lg shadow border-t-4 border-blue-500">
-                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">Today's Performance</h3>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">Total Sales:</span><strong id="stat-today-sales" class="text-lg text-gray-800">KSh 0</strong></div>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">Amount Paid:</span><strong id="stat-today-paid" class="text-lg text-green-600">KSh 0</strong></div>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">Expenses:</span><strong id="stat-today-expenses" class="text-lg text-orange-600">KSh 0</strong></div>
-                    <div class="flex justify-between items-center pt-2 border-t"><span class="text-sm font-bold text-gray-800">Pending Balance:</span><strong id="stat-today-balance" class="text-lg text-red-600">KSh 0</strong></div>
-                </div>
-                <!-- Grand Totals -->
-                <div class="bg-white p-6 rounded-lg shadow border-t-4 border-green-500">
-                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">Branch Grand Totals</h3>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">All-Time Sales:</span><strong id="stat-total-sales" class="text-md text-gray-800">KSh 0</strong></div>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">Total Collected:</span><strong id="stat-total-paid" class="text-md text-green-600">KSh 0</strong></div>
-                    <div class="flex justify-between items-center mb-2"><span class="text-sm text-gray-600">Total Expenses:</span><strong id="stat-total-expenses" class="text-md text-orange-600">KSh 0</strong></div>
-                    <div class="flex justify-between items-center pt-2 border-t"><span class="text-sm font-bold text-gray-800">Total Outstanding:</span><strong id="stat-total-balance" class="text-md text-red-600">KSh 0</strong></div>
-                </div>
-                <!-- Pipeline -->
-                <div class="bg-white p-6 rounded-lg shadow border-t-4 border-yellow-500">
-                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">Project Pipeline</h3>
-                    <div class="space-y-2">
-                        <div class="flex justify-between"><span class="text-sm text-gray-600">In Design:</span> <strong id="stat-design" class="text-blue-600">0</strong></div>
-                        <div class="flex justify-between"><span class="text-sm text-gray-600">In Production:</span> <strong id="stat-production" class="text-purple-600">0</strong></div>
-                        <div class="flex justify-between"><span class="text-sm text-gray-600">In Fabrication:</span> <strong id="stat-fabrication" class="text-orange-600">0</strong></div>
-                    </div>
-                </div>
+
+    <!-- ==========================================
+         MAIN CONTENT
+         ========================================== -->
+
+    <main
+        id="main-content"
+        class="flex-1 p-8 overflow-y-auto overflow-x-hidden w-full bg-gray-100"
+    >
+
+
+        <!-- ==========================================
+             MOBILE TOP BAR
+             ========================================== -->
+
+        <div
+            id="mobile-header"
+            class="hidden items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 px-4 py-3 mb-4"
+        >
+
+            <div class="min-w-0">
+
+                <p class="text-xs text-gray-500 font-semibold uppercase tracking-wide">
+                    Dadris Prints
+                </p>
+
+                <p
+                    id="mobile-branch-name"
+                    class="text-sm font-bold text-gray-800 truncate"
+                >
+                    Branch Dashboard
+                </p>
+
             </div>
+
+
+            <button
+                type="button"
+                onclick="openMobileSidebar()"
+                class="flex-shrink-0 bg-gray-900 text-white w-10 h-10 rounded-lg flex items-center justify-center text-xl"
+                aria-label="Open navigation"
+            >
+                &#9776;
+            </button>
+
         </div>
 
-        <!-- PROJECTS TAB -->
-        <div id="view-projects" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">All Projects & Sales</h2>
-                <button onclick="openNewSaleModal()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 shadow-md">
+
+        <!-- ==========================================
+             OVERVIEW TAB
+             ========================================== -->
+
+        <div
+            id="view-overview"
+            class="view-section block min-w-0"
+        >
+
+            <h2 class="page-heading text-2xl font-bold text-gray-800 mb-6">
+                Dashboard Overview
+            </h2>
+
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+
+
+                <!-- Today's Stats -->
+
+                <div class="dashboard-card bg-white p-6 rounded-lg shadow border-t-4 border-blue-500">
+
+                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">
+                        Today's Performance
+                    </h3>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            Total Sales:
+                        </span>
+
+                        <strong
+                            id="stat-today-sales"
+                            class="text-lg text-gray-800"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            Amount Paid:
+                        </span>
+
+                        <strong
+                            id="stat-today-paid"
+                            class="text-lg text-green-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            Expenses:
+                        </span>
+
+                        <strong
+                            id="stat-today-expenses"
+                            class="text-lg text-orange-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center pt-2 border-t gap-3">
+
+                        <span class="text-sm font-bold text-gray-800">
+                            Pending Balance:
+                        </span>
+
+                        <strong
+                            id="stat-today-balance"
+                            class="text-lg text-red-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Grand Totals -->
+
+                <div class="dashboard-card bg-white p-6 rounded-lg shadow border-t-4 border-green-500">
+
+                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">
+                        Branch Grand Totals
+                    </h3>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            All-Time Sales:
+                        </span>
+
+                        <strong
+                            id="stat-total-sales"
+                            class="text-md text-gray-800"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            Total Collected:
+                        </span>
+
+                        <strong
+                            id="stat-total-paid"
+                            class="text-md text-green-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center mb-2 gap-3">
+
+                        <span class="text-sm text-gray-600">
+                            Total Expenses:
+                        </span>
+
+                        <strong
+                            id="stat-total-expenses"
+                            class="text-md text-orange-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+
+                    <div class="stat-row flex justify-between items-center pt-2 border-t gap-3">
+
+                        <span class="text-sm font-bold text-gray-800">
+                            Total Outstanding:
+                        </span>
+
+                        <strong
+                            id="stat-total-balance"
+                            class="text-md text-red-600"
+                        >
+                            KSh 0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Pipeline -->
+
+                <div class="dashboard-card bg-white p-6 rounded-lg shadow border-t-4 border-yellow-500">
+
+                    <h3 class="text-gray-800 text-md font-bold border-b pb-2 mb-3">
+                        Project Pipeline
+                    </h3>
+
+
+                    <div class="space-y-2">
+
+                        <div class="flex justify-between gap-3">
+
+                            <span class="text-sm text-gray-600">
+                                In Design:
+                            </span>
+
+                            <strong
+                                id="stat-design"
+                                class="text-blue-600"
+                            >
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div class="flex justify-between gap-3">
+
+                            <span class="text-sm text-gray-600">
+                                In Production:
+                            </span>
+
+                            <strong
+                                id="stat-production"
+                                class="text-purple-600"
+                            >
+                                0
+                            </strong>
+
+                        </div>
+
+
+                        <div class="flex justify-between gap-3">
+
+                            <span class="text-sm text-gray-600">
+                                In Fabrication:
+                            </span>
+
+                            <strong
+                                id="stat-fabrication"
+                                class="text-orange-600"
+                            >
+                                0
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ==========================================
+             PROJECTS TAB
+             ========================================== -->
+
+        <div
+            id="view-projects"
+            class="view-section hidden min-w-0"
+        >
+
+            <div class="mobile-header-actions flex justify-between items-center mb-6 gap-4">
+
+                <h2 class="page-heading text-2xl font-bold text-gray-800">
+                    All Projects & Sales
+                </h2>
+
+
+                <button
+                    onclick="openNewSaleModal()"
+                    class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 shadow-md whitespace-nowrap"
+                >
                     + New Sale
                 </button>
+
             </div>
+
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="p-4 text-sm font-bold text-gray-600">Project / Client</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Designer</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Stage / Status</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Financials</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Expenses</th>
-                            <th class="p-4 text-sm font-bold text-gray-600 text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-branch-projects"></tbody>
-                </table>
+
+                <div class="responsive-table">
+
+                    <table class="w-full text-left">
+
+                        <thead class="bg-gray-50 border-b">
+
+                            <tr>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Project / Client
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Designer
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Stage / Status
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Financials
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Expenses
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600 text-right">
+                                    Actions
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="table-branch-projects"></tbody>
+
+                    </table>
+
+                </div>
+
             </div>
+
         </div>
 
-        <!-- DESIGN BOARD TAB -->
-        <div id="view-design" class="view-section hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Design Board</h2>
-            <div id="grid-design" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- ==========================================
+             DESIGN BOARD TAB
+             ========================================== -->
+
+        <div
+            id="view-design"
+            class="view-section hidden min-w-0"
+        >
+
+            <h2 class="page-heading text-2xl font-bold text-gray-800 mb-6">
+                Design Board
+            </h2>
+
+
+            <div
+                id="grid-design"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-0"
+            ></div>
+
         </div>
 
-        <!-- PRODUCTION QUEUE TAB -->
-        <div id="view-production" class="view-section hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Production Queue</h2>
-            <div id="grid-production" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- ==========================================
+             PRODUCTION QUEUE TAB
+             ========================================== -->
+
+        <div
+            id="view-production"
+            class="view-section hidden min-w-0"
+        >
+
+            <h2 class="page-heading text-2xl font-bold text-gray-800 mb-6">
+                Production Queue
+            </h2>
+
+
+            <div
+                id="grid-production"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-0"
+            ></div>
+
         </div>
 
-        <!-- FABRICATION TAB -->
-        <div id="view-fabrication" class="view-section hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Fabrication Queue</h2>
-            <div id="grid-fabrication" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+        <!-- ==========================================
+             FABRICATION TAB
+             ========================================== -->
+
+        <div
+            id="view-fabrication"
+            class="view-section hidden min-w-0"
+        >
+
+            <h2 class="page-heading text-2xl font-bold text-gray-800 mb-6">
+                Fabrication Queue
+            </h2>
+
+
+            <div
+                id="grid-fabrication"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 min-w-0"
+            ></div>
+
         </div>
 
-        <!-- PAYMENTS LEDGER TAB -->
-        <div id="view-payments" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Payments Ledger</h2>
-                <button onclick="openPaymentModal()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow-md">
+
+        <!-- ==========================================
+             PAYMENTS LEDGER TAB
+             ========================================== -->
+
+        <div
+            id="view-payments"
+            class="view-section hidden min-w-0"
+        >
+
+            <div class="mobile-header-actions flex justify-between items-center mb-6 gap-4">
+
+                <h2 class="page-heading text-2xl font-bold text-gray-800">
+                    Payments Ledger
+                </h2>
+
+
+                <button
+                    onclick="openPaymentModal()"
+                    class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow-md whitespace-nowrap"
+                >
                     + Record Payment
                 </button>
+
             </div>
+
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="p-4 text-sm font-bold text-gray-600">Date</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Project</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Client</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Method</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-branch-payments"></tbody>
-                </table>
+
+                <div class="responsive-table">
+
+                    <table class="w-full text-left">
+
+                        <thead class="bg-gray-50 border-b">
+
+                            <tr>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Date
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Project
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Client
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Method
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Amount
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="table-branch-payments"></tbody>
+
+                    </table>
+
+                </div>
+
             </div>
+
         </div>
 
-        <!-- EXPENSES LEDGER TAB -->
-        <div id="view-expenses" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Expenses Ledger</h2>
-                <button onclick="document.getElementById('modal-add-expense').classList.remove('hidden')" class="bg-orange-600 text-white px-4 py-2 rounded font-bold hover:bg-orange-700 shadow-md">
+
+        <!-- ==========================================
+             EXPENSES LEDGER TAB
+             ========================================== -->
+
+        <div
+            id="view-expenses"
+            class="view-section hidden min-w-0"
+        >
+
+            <div class="mobile-header-actions flex justify-between items-center mb-6 gap-4">
+
+                <h2 class="page-heading text-2xl font-bold text-gray-800">
+                    Expenses Ledger
+                </h2>
+
+
+                <button
+                    onclick="document.getElementById('modal-add-expense').classList.remove('hidden'); document.body.classList.add('overflow-hidden')"
+                    class="bg-orange-600 text-white px-4 py-2 rounded font-bold hover:bg-orange-700 shadow-md whitespace-nowrap"
+                >
                     + Record Expense
                 </button>
+
             </div>
+
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="p-4 text-sm font-bold text-gray-600">Date</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Expense Title / Description</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Category</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-branch-expenses"></tbody>
-                </table>
+
+                <div class="responsive-table">
+
+                    <table class="w-full text-left">
+
+                        <thead class="bg-gray-50 border-b">
+
+                            <tr>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Date
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Expense Title / Description
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Category
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Amount
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="table-branch-expenses"></tbody>
+
+                    </table>
+
+                </div>
+
             </div>
+
         </div>
 
-        <!-- CLIENTS TAB -->
-        <div id="view-clients" class="view-section hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">Branch Clients</h2>
-                <button onclick="document.getElementById('modal-new-client').classList.remove('hidden')" class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 shadow-md">
+
+        <!-- ==========================================
+             CLIENTS TAB
+             ========================================== -->
+
+        <div
+            id="view-clients"
+            class="view-section hidden min-w-0"
+        >
+
+            <div class="mobile-header-actions flex justify-between items-center mb-6 gap-4">
+
+                <h2 class="page-heading text-2xl font-bold text-gray-800">
+                    Branch Clients
+                </h2>
+
+
+                <button
+                    onclick="document.getElementById('modal-new-client').classList.remove('hidden'); document.body.classList.add('overflow-hidden')"
+                    class="bg-blue-600 text-white px-4 py-2 rounded font-bold hover:bg-blue-700 shadow-md whitespace-nowrap"
+                >
                     + New Client
                 </button>
+
             </div>
+
+
             <div class="bg-white rounded-lg shadow overflow-hidden">
-                <table class="w-full text-left">
-                    <thead class="bg-gray-50 border-b">
-                        <tr>
-                            <th class="p-4 text-sm font-bold text-gray-600">Client Name</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Phone</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Type</th>
-                            <th class="p-4 text-sm font-bold text-gray-600">Date Added</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-branch-clients"></tbody>
-                </table>
+
+                <div class="responsive-table">
+
+                    <table class="w-full text-left">
+
+                        <thead class="bg-gray-50 border-b">
+
+                            <tr>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Client Name
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Phone
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Type
+                                </th>
+
+                                <th class="p-4 text-sm font-bold text-gray-600">
+                                    Date Added
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="table-branch-clients"></tbody>
+
+                    </table>
+
+                </div>
+
             </div>
+
         </div>
+
     </main>
 
-    <!-- NEW SALE MODAL -->
-    <div id="modal-new-sale" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96 max-h-screen overflow-y-auto">
-            <h2 class="text-lg font-bold mb-4">Log New Sale</h2>
+
+    <!-- ==========================================
+         NEW SALE MODAL
+         ========================================== -->
+
+    <div
+        id="modal-new-sale"
+        class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+
+        <div class="responsive-modal bg-white p-6 rounded-lg shadow-xl">
+
+            <h2 class="text-lg font-bold mb-4">
+                Log New Sale
+            </h2>
+
+
             <form id="form-new-sale">
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Project Title</label>
-                    <input type="text" id="sale-title" class="w-full border p-2 rounded" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Project Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="sale-title"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                    >
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Select Customer</label>
-                    <select id="sale-customer-id" class="w-full border p-2 rounded" required></select>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Select Customer
+                    </label>
+
+                    <select
+                        id="sale-customer-id"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                    ></select>
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Assign Designer</label>
-                    <select id="sale-designer" class="w-full border p-2 rounded bg-yellow-50"></select>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Assign Designer
+                    </label>
+
+                    <select
+                        id="sale-designer"
+                        class="w-full border p-2 rounded bg-yellow-50 focus:ring-2 focus:ring-yellow-500 focus:outline-none"
+                    ></select>
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Total Amount (KSh)</label>
-                    <input type="number" id="sale-total" class="w-full border p-2 rounded" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Total Amount (KSh)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="sale-total"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                    >
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Initial Deposit (KSh)</label>
-                    <input type="number" id="sale-paid" class="w-full border p-2 rounded" value="0" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Initial Deposit (KSh)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="sale-paid"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        value="0"
+                        required
+                    >
+
                 </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" onclick="document.getElementById('modal-new-sale').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Save Project</button>
+
+
+                <div class="modal-actions flex justify-end space-x-2 mt-6">
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('modal-new-sale').classList.add('hidden'); document.body.classList.remove('overflow-hidden')"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700"
+                    >
+                        Save Project
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
-    <!-- NEW CLIENT MODAL -->
-    <div id="modal-new-client" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h2 class="text-lg font-bold mb-4">Add New Client</h2>
+
+    <!-- ==========================================
+         NEW CLIENT MODAL
+         ========================================== -->
+
+    <div
+        id="modal-new-client"
+        class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+
+        <div class="responsive-modal bg-white p-6 rounded-lg shadow-xl">
+
+            <h2 class="text-lg font-bold mb-4">
+                Add New Client
+            </h2>
+
+
             <form id="form-new-client">
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Client Name</label>
-                    <input type="text" id="client-name" class="w-full border p-2 rounded" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Client Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="client-name"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                    >
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Phone Number</label>
-                    <input type="text" id="client-phone" class="w-full border p-2 rounded">
+
+                    <label class="block text-sm font-bold mb-1">
+                        Phone Number
+                    </label>
+
+                    <input
+                        type="text"
+                        id="client-phone"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    >
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Client Type</label>
-                    <select id="client-type" class="w-full border p-2 rounded" required>
-                        <option value="INDIVIDUAL">INDIVIDUAL</option>
-                        <option value="CORPORATE">CORPORATE</option>
-                        <option value="RETAIL">RETAIL</option>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Client Type
+                    </label>
+
+                    <select
+                        id="client-type"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                    >
+
+                        <option value="INDIVIDUAL">
+                            INDIVIDUAL
+                        </option>
+
+                        <option value="CORPORATE">
+                            CORPORATE
+                        </option>
+
+                        <option value="RETAIL">
+                            RETAIL
+                        </option>
+
                     </select>
+
                 </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" onclick="document.getElementById('modal-new-client').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Save Client</button>
+
+
+                <div class="modal-actions flex justify-end space-x-2 mt-6">
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('modal-new-client').classList.add('hidden'); document.body.classList.remove('overflow-hidden')"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700"
+                    >
+                        Save Client
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
-    <!-- RECORD PAYMENT MODAL -->
-    <div id="modal-add-payment" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h2 class="text-lg font-bold mb-4">Record Payment</h2>
+
+    <!-- ==========================================
+         RECORD PAYMENT MODAL
+         ========================================== -->
+
+    <div
+        id="modal-add-payment"
+        class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+
+        <div class="responsive-modal bg-white p-6 rounded-lg shadow-xl">
+
+            <h2 class="text-lg font-bold mb-4">
+                Record Payment
+            </h2>
+
+
             <form id="form-add-payment">
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Select Project</label>
-                    <select id="payment-project-id" class="w-full border p-2 rounded" required></select>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Select Project
+                    </label>
+
+                    <select
+                        id="payment-project-id"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
+                        required
+                    ></select>
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Payment Method</label>
-                    <select id="payment-method" class="w-full border p-2 rounded">
-                        <option value="MPESA">M-Pesa</option>
-                        <option value="CASH">Cash</option>
-                        <option value="BANK">Bank Transfer</option>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Payment Method
+                    </label>
+
+                    <select
+                        id="payment-method"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
+                    >
+
+                        <option value="MPESA">
+                            M-Pesa
+                        </option>
+
+                        <option value="CASH">
+                            Cash
+                        </option>
+
+                        <option value="BANK">
+                            Bank Transfer
+                        </option>
+
                     </select>
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Amount Paid (KSh)</label>
-                    <input type="number" id="payment-amount" class="w-full border p-2 rounded" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Amount Paid (KSh)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="payment-amount"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-green-500 focus:outline-none"
+                        required
+                    >
+
                 </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" onclick="document.getElementById('modal-add-payment').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded font-bold">Save Payment</button>
+
+
+                <div class="modal-actions flex justify-end space-x-2 mt-6">
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('modal-add-payment').classList.add('hidden'); document.body.classList.remove('overflow-hidden')"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="px-4 py-2 bg-green-600 text-white rounded font-bold hover:bg-green-700"
+                    >
+                        Save Payment
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
-    <!-- RECORD EXPENSE MODAL -->
-    <div id="modal-add-expense" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h2 class="text-lg font-bold mb-4">Record Expense</h2>
+
+    <!-- ==========================================
+         RECORD EXPENSE MODAL
+         ========================================== -->
+
+    <div
+        id="modal-add-expense"
+        class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+
+        <div class="responsive-modal bg-white p-6 rounded-lg shadow-xl">
+
+            <h2 class="text-lg font-bold mb-4">
+                Record Expense
+            </h2>
+
+
             <form id="form-add-expense">
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Expense Description</label>
-                    <input type="text" id="expense-title" class="w-full border p-2 rounded" placeholder="e.g. Printing Ink, Paper Material" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Expense Description
+                    </label>
+
+                    <input
+                        type="text"
+                        id="expense-title"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                        placeholder="e.g. Printing Ink, Paper Material"
+                        required
+                    >
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Category</label>
-                    <select id="expense-category" class="w-full border p-2 rounded">
-                        <option value="MATERIALS">Materials & Supplies</option>
-                        <option value="UTILITIES">Utilities / Rent</option>
-                        <option value="MAINTENANCE">Equipment Maintenance</option>
-                        <option value="MISC">Miscellaneous</option>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Category
+                    </label>
+
+                    <select
+                        id="expense-category"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                    >
+
+                        <option value="MATERIALS">
+                            Materials & Supplies
+                        </option>
+
+                        <option value="UTILITIES">
+                            Utilities / Rent
+                        </option>
+
+                        <option value="MAINTENANCE">
+                            Equipment Maintenance
+                        </option>
+
+                        <option value="MISC">
+                            Miscellaneous
+                        </option>
+
                     </select>
+
                 </div>
+
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">Amount (KSh)</label>
-                    <input type="number" id="expense-amount" class="w-full border p-2 rounded" required>
+
+                    <label class="block text-sm font-bold mb-1">
+                        Amount (KSh)
+                    </label>
+
+                    <input
+                        type="number"
+                        id="expense-amount"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-orange-500 focus:outline-none"
+                        required
+                    >
+
                 </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" onclick="document.getElementById('modal-add-expense').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded font-bold">Save Expense</button>
+
+
+                <div class="modal-actions flex justify-end space-x-2 mt-6">
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('modal-add-expense').classList.add('hidden'); document.body.classList.remove('overflow-hidden')"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="px-4 py-2 bg-orange-600 text-white rounded font-bold hover:bg-orange-700"
+                    >
+                        Save Expense
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
 
-    <!-- CHANGE PASSWORD MODAL -->
-    <div id="modal-password" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
-            <h2 class="text-lg font-bold mb-4">Change Password</h2>
+
+    <!-- ==========================================
+         CHANGE PASSWORD MODAL
+         ========================================== -->
+
+    <div
+        id="modal-password"
+        class="modal-backdrop hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+    >
+
+        <div class="responsive-modal bg-white p-6 rounded-lg shadow-xl">
+
+            <h2 class="text-lg font-bold mb-4">
+                Change Password
+            </h2>
+
+
             <form id="form-password">
+
                 <div class="mb-4">
-                    <label class="block text-sm font-bold mb-1">New Password</label>
-                    <input type="password" id="new-password" class="w-full border p-2 rounded" required minlength="6">
+
+                    <label class="block text-sm font-bold mb-1">
+                        New Password
+                    </label>
+
+                    <input
+                        type="password"
+                        id="new-password"
+                        class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        required
+                        minlength="6"
+                    >
+
                 </div>
-                <div class="flex justify-end space-x-2 mt-6">
-                    <button type="button" onclick="document.getElementById('modal-password').classList.add('hidden')" class="px-4 py-2 bg-gray-200 rounded">Cancel</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded font-bold">Update</button>
+
+
+                <div class="modal-actions flex justify-end space-x-2 mt-6">
+
+                    <button
+                        type="button"
+                        onclick="document.getElementById('modal-password').classList.add('hidden'); document.body.classList.remove('overflow-hidden')"
+                        class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700"
+                    >
+                        Update
+                    </button>
+
                 </div>
+
             </form>
+
         </div>
+
     </div>
+
+
+    <!-- ==========================================
+         RESPONSIVE SIDEBAR SCRIPT
+         This does NOT replace branch.js.
+         It only controls the mobile menu.
+         ========================================== -->
+
+    <script>
+        function openMobileSidebar() {
+
+            const sidebar =
+                document.getElementById('sidebar');
+
+            const overlay =
+                document.getElementById(
+                    'mobile-sidebar-overlay'
+                );
+
+
+            if (sidebar) {
+
+                sidebar.classList.add(
+                    'mobile-sidebar-open'
+                );
+
+            }
+
+
+            if (overlay) {
+
+                overlay.classList.remove(
+                    'hidden'
+                );
+
+            }
+
+
+            document.body.classList.add(
+                'overflow-hidden'
+            );
+
+        }
+
+
+        function closeMobileSidebar() {
+
+            const sidebar =
+                document.getElementById('sidebar');
+
+            const overlay =
+                document.getElementById(
+                    'mobile-sidebar-overlay'
+                );
+
+
+            if (sidebar) {
+
+                sidebar.classList.remove(
+                    'mobile-sidebar-open'
+                );
+
+            }
+
+
+            if (overlay) {
+
+                overlay.classList.add(
+                    'hidden'
+                );
+
+            }
+
+
+            /*
+             * Only remove body overflow if
+             * no modal is currently visible.
+             */
+
+            const visibleModal =
+                document.querySelector(
+                    '[id^="modal-"]:not(.hidden)'
+                );
+
+
+            if (!visibleModal) {
+
+                document.body.classList.remove(
+                    'overflow-hidden'
+                );
+
+            }
+
+        }
+
+
+        /*
+         * ESC key:
+         * close sidebar or visible modal.
+         */
+
+        document.addEventListener(
+            'keydown',
+            function(event) {
+
+                if (event.key !== 'Escape') {
+                    return;
+                }
+
+
+                closeMobileSidebar();
+
+
+                document
+                    .querySelectorAll(
+                        '[id^="modal-"]'
+                    )
+                    .forEach(function(modal) {
+
+                        if (
+                            !modal.classList.contains(
+                                'hidden'
+                            )
+                        ) {
+
+                            modal.classList.add(
+                                'hidden'
+                            );
+
+                        }
+
+                    });
+
+
+                document.body.classList.remove(
+                    'overflow-hidden'
+                );
+
+            }
+        );
+
+
+        /*
+         * Keep the mobile branch name synchronized
+         * with the existing branch name element.
+         */
+        document.addEventListener(
+            'DOMContentLoaded',
+            function() {
+
+                const source =
+                    document.getElementById(
+                        'sidebar-branch-name'
+                    );
+
+                const mobile =
+                    document.getElementById(
+                        'mobile-branch-name'
+                    );
+
+
+                if (!source || !mobile) {
+                    return;
+                }
+
+
+                const observer =
+                    new MutationObserver(
+                        function() {
+
+                            mobile.textContent =
+                                source.textContent;
+
+                        }
+                    );
+
+
+                observer.observe(
+                    source,
+                    {
+                        childList: true,
+                        characterData: true,
+                        subtree: true
+                    }
+                );
+
+
+                mobile.textContent =
+                    source.textContent;
+
+            }
+        );
+
+    </script>
+
+
+    <!-- ==========================================
+         EXISTING APPLICATION SCRIPTS
+         ========================================== -->
 
     <script src="js/supabase.js"></script>
     <script src="js/branch.js"></script>
+
 </body>
 </html>
