@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Owner Command Center | Dadris Prints</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- CRITICAL: Your Supabase Connection -->
+    <script src="js/supabase.js"></script>
+</head>
+<body class="bg-gray-50 flex h-screen font-sans text-gray-800">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-gray-900 text-white flex flex-col">
+        <div class="p-6 border-b border-gray-800">
+            <h1 class="text-xl font-bold uppercase tracking-wider text-green-400">DADRIS PRINTS</h1>
+            <p class="text-xs text-gray-400 mt-1">Owner Command Center</p>
+        </div>
+        
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto" id="sidebar-nav">
+            <button onclick="toggleView('view-dashboard', this)" class="nav-btn w-full text-left px-4 py-2 bg-gray-800 rounded shadow border-l-4 border-green-500 font-medium transition">
+                📊 Overview
+            </button>
+            <button onclick="toggleView('view-branch-sales', this); loadDetailedBranchSales();" class="nav-btn w-full text-left px-4 py-3 text-gray-400 hover:bg-gray-800 hover:text-white rounded transition font-medium flex items-center">
+    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+    Branch Sales & Expenses
+</button>
+            <button onclick="toggleView('view-branches', this)" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-800 border-l-4 border-transparent transition">
+                🏢 Branches
+            </button>
+            <button onclick="toggleView('view-staff', this)" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-800 border-l-4 border-transparent transition">
+                👥 Staff
+            </button>
+            <button onclick="toggleView('view-customers', this)" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-800 border-l-4 border-transparent transition">
+                🤝 Customers
+            </button>
+            <button onclick="toggleView('view-projects', this)" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-800 border-l-4 border-transparent transition">
+                📁 All Projects
+            </button>
+            <button onclick="toggleView('view-payments', this)" class="nav-btn w-full text-left px-4 py-2 rounded hover:bg-gray-800 border-l-4 border-transparent transition">
+                💳 Payments Ledger
+            </button>
+        </nav>
+
+        <div class="p-4 border-t border-gray-800">
+            <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-red-400 hover:bg-gray-800 rounded transition">
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden">
+        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-10">
+            <h2 class="text-xl font-semibold text-gray-700" id="current-view-title">Company Overview</h2>
+            <div class="flex items-center space-x-3">
+                <span class="text-sm text-gray-500">Logged in as:</span>
+                <span id="user-display-name" class="font-bold text-gray-800">Owner</span>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6 relative">
+            
+            <!-- OVERVIEW COMMAND CENTER -->
+            <div id="view-dashboard" class="view-section block">
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">Company Overview</h2>
+                
+                <!-- All-Time Financial Metrics -->
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">All-Time Financial Performance</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-5 rounded-lg shadow border-l-4 border-blue-500">
+                        <h4 class="text-gray-500 text-xs font-bold uppercase">Total Sales</h4>
+                        <p class="text-2xl font-bold text-gray-800 mt-1" id="stat-total-sales">KSh 0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow border-l-4 border-green-500">
+                        <h4 class="text-gray-500 text-xs font-bold uppercase">Total Amount Paid</h4>
+                        <p class="text-2xl font-bold text-green-600 mt-1" id="stat-total-paid">KSh 0</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-lg shadow border-l-4 border-red-500">
+                        <h4 class="text-gray-500 text-xs font-bold uppercase">Total Outstanding Balance</h4>
+                        <p class="text-2xl font-bold text-red-600 mt-1" id="stat-total-balance">KSh 0</p>
+                    </div>
+                </div>
+
+                <!-- Daily Breakdown: Today vs Yesterday -->
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Daily Ledger Breakdown</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Today -->
+                    <div class="bg-white p-5 rounded-lg shadow border border-gray-100">
+                        <div class="flex justify-between items-center border-b pb-2 mb-3">
+                            <span class="font-bold text-gray-700">Today's Summary</span>
+                            <span class="text-xs text-gray-400 font-mono" id="label-date-today"></span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p class="text-xs text-gray-500">Sales</p>
+                                <p class="text-base font-bold text-gray-800" id="stat-today-sales">KSh 0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Paid</p>
+                                <p class="text-base font-bold text-green-600" id="stat-today-paid">KSh 0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Balance</p>
+                                <p class="text-base font-bold text-red-600" id="stat-today-balance">KSh 0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Yesterday -->
+                    <div class="bg-white p-5 rounded-lg shadow border border-gray-100">
+                        <div class="flex justify-between items-center border-b pb-2 mb-3">
+                            <span class="font-bold text-gray-700">Yesterday's Summary</span>
+                            <span class="text-xs text-gray-400 font-mono" id="label-date-yesterday"></span>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center">
+                            <div>
+                                <p class="text-xs text-gray-500">Sales</p>
+                                <p class="text-base font-bold text-gray-800" id="stat-yesterday-sales">KSh 0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Paid</p>
+                                <p class="text-base font-bold text-green-600" id="stat-yesterday-paid">KSh 0</p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Balance</p>
+                                <p class="text-base font-bold text-red-600" id="stat-yesterday-balance">KSh 0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Branch Performance Breakdown -->
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Branch Financial Performance</h3>
+                <div class="bg-white rounded-lg shadow overflow-x-auto mb-8">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-600 uppercase border-b text-xs">
+                            <tr>
+                                <th class="p-4">Branch Name</th>
+                                <th class="p-4">Total Sales</th>
+                                <th class="p-4">Amount Paid</th>
+                                <th class="p-4">Outstanding Balance</th>
+                                <th class="p-4">Active Projects</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-branch-performance" class="divide-y">
+                            <!-- Branch performance rows will render here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Operations Pipeline -->
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Project Operations Pipeline</h3>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                    <div class="bg-white p-4 rounded shadow text-center border-t-2 border-gray-400">
+                        <p class="text-gray-500 text-xs font-bold uppercase">Pending / New</p>
+                        <p class="text-2xl font-bold text-gray-800 mt-1" id="stat-stage-pending">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow text-center border-t-2 border-purple-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase">In Design</p>
+                        <p class="text-2xl font-bold text-purple-600 mt-1" id="stat-stage-design">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow text-center border-t-2 border-orange-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase">Client Revision</p>
+                        <p class="text-2xl font-bold text-orange-500 mt-1" id="stat-stage-revision">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow text-center border-t-2 border-blue-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase">Production</p>
+                        <p class="text-2xl font-bold text-blue-600 mt-1" id="stat-stage-production">0</p>
+                    </div>
+                    <div class="bg-white p-4 rounded shadow text-center border-t-2 border-green-500">
+                        <p class="text-gray-500 text-xs font-bold uppercase">Completed</p>
+                        <p class="text-2xl font-bold text-green-600 mt-1" id="stat-stage-completed">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BRANCH SALES & EXPENSES VIEW -->
+<div id="view-branch-sales" class="view-section hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold text-gray-800">Branch Sales & Expenses</h2>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-left border-collapse">
+            <thead>
+                <tr class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider border-b">
+                    <th class="p-4 font-semibold">Branch Name</th>
+                    <th class="p-4 font-semibold">Today's Sales</th>
+                    <th class="p-4 font-semibold">All-Time Sales</th>
+                    <th class="p-4 font-semibold">Total Paid</th>
+                    <th class="p-4 font-semibold">Outstanding Bal</th>
+                    <th class="p-4 font-semibold">Total Expenses</th>
+                </tr>
+            </thead>
+            <tbody id="table-detailed-branch-sales" class="divide-y divide-gray-100">
+                <!-- Data populated by JS -->
+            </tbody>
+        </table>
+    </div>
+</div>
+            <!-- BRANCHES -->
+            <div id="view-branches" class="view-section hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Branch Management</h2>
+                    <button onclick="toggleModal('modal-branch')" class="bg-gray-900 text-white px-4 py-2 rounded shadow hover:bg-gray-800 transition">+ New Branch</button>
+                </div>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                            <tr><th class="p-4">Branch Name</th><th class="p-4">Created</th></tr>
+                        </thead>
+                        <tbody id="table-branches" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- STAFF -->
+            <div id="view-staff" class="view-section hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Staff Directory</h2>
+                    <button onclick="openStaffModal()" class="bg-gray-900 text-white px-4 py-2 rounded shadow hover:bg-gray-800 transition">+ Add Staff</button>
+                </div>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                            <tr><th class="p-4">Name</th><th class="p-4">Role</th><th class="p-4">Branch</th></tr>
+                        </thead>
+                        <tbody id="table-staff" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CUSTOMERS -->
+            <div id="view-customers" class="view-section hidden">
+                <h2 class="text-2xl font-bold mb-4">Global Customer Directory</h2>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                            <tr>
+                                <th class="p-4">Customer Name</th>
+                                <th class="p-4">Phone</th>
+                                <th class="p-4">Branch</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-customers" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PROJECTS -->
+            <div id="view-projects" class="view-section hidden">
+                <h2 class="text-2xl font-bold mb-4">Company-wide Projects</h2>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                            <tr>
+                                <th class="p-4">ID</th>
+                                <th class="p-4">Project & Customer</th>
+                                <th class="p-4">Branch</th>
+                                <th class="p-4">Stage</th>
+                                <th class="p-4">Financials</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-projects" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PAYMENTS -->
+            <div id="view-payments" class="view-section hidden">
+                <h2 class="text-2xl font-bold mb-4">Company Payment Ledger</h2>
+                <div class="bg-white rounded shadow overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-600 uppercase border-b">
+                            <tr>
+                                <th class="p-4">Receipt</th><th class="p-4">Customer</th><th class="p-4">Project</th>
+                                <th class="p-4">Amount</th><th class="p-4">Method</th><th class="p-4">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-payments" class="divide-y"></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- MODALS -->
+    <!-- Add Branch Modal -->
+    <div id="modal-branch" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 shadow-xl">
+            <h3 class="text-lg font-bold mb-4">Create New Branch</h3>
+            <form id="form-branch" onsubmit="handleBranchSubmit(event)">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Branch Name</label>
+                <input type="text" id="branch-name" placeholder="e.g. Nairobi CBD" class="w-full border border-gray-300 p-2 mb-4 rounded focus:outline-none focus:border-gray-900" required>
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="toggleModal('modal-branch')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Save Branch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Staff Modal (With Logins) -->
+    <div id="modal-staff" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-96 shadow-xl">
+            <h3 class="text-lg font-bold mb-4">Add Staff & Create Login</h3>
+            <form id="form-staff" onsubmit="handleCreateStaff(event)">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input type="text" id="staff-name" placeholder="e.g. John Doe" class="w-full border border-gray-300 p-2 mb-3 rounded" required>
+                
+                <!-- CHANGED FROM EMAIL TO USERNAME -->
+                <label class="block text-sm font-medium text-gray-700 mb-1">Username (Login ID)</label>
+                <input type="text" id="staff-username" placeholder="e.g. evans" class="w-full border border-gray-300 p-2 mb-3 rounded" required>
+                
+                <label class="block text-sm font-medium text-gray-700 mb-1">Temporary Password</label>
+                <input type="password" id="staff-password" placeholder="e.g. Dadris2026!" class="w-full border border-gray-300 p-2 mb-3 rounded" required>
+
+                <div class="grid grid-cols-2 gap-3 mb-5">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                        <select id="staff-role" class="w-full border border-gray-300 p-2 rounded" required>
+                            <option value="BRANCH_MANAGER">Branch Manager</option>
+                            <option value="SALES_REP">Sales Representative</option>
+                            <option value="GRAPHIC_DESIGNER">Graphic Designer</option>
+                            <option value="PRODUCTION">Production Staff</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Branch</label>
+                        <select id="staff-branch" class="w-full border border-gray-300 p-2 rounded" required></select>
+                    </div>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="toggleModal('modal-staff')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Logic Script -->
+    <script src="js/admin.js"></script>
+</body>
+</html>
