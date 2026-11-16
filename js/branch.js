@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('form-new-sale').addEventListener('submit', handleNewSale);
     document.getElementById('form-new-client').addEventListener('submit', handleNewClient);
     document.getElementById('form-add-payment').addEventListener('submit', handleRecordPayment);
-    document.getElementById('form-add-expense').addEventListener('submit', handleAddExpense);
     document.getElementById('form-password').addEventListener('submit', handlePasswordChange);
 });
 
@@ -31,7 +30,6 @@ function setupRealtime() {
         .channel('schema-db-changes')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => refreshAllData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'payments' }, () => refreshAllData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => refreshAllData())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'customers' }, () => refreshAllData())
         .subscribe();
 }
@@ -41,7 +39,6 @@ function refreshAllData() {
     loadBranchProjects();
     loadBoards();
     loadPayments();
-    loadExpenses();
     loadClients();
 }
 
@@ -81,12 +78,10 @@ async function handlePasswordChange(e) {
 
 // DATA: Load Overview Stats
 async function loadDashboardStats() {
-    const { data: projects } = await supabase.from('projects').select('*').eq('branch_id', currentUserBranchId);
-    const { data: payments } = await supabase.from('payments').select('amount, created_at').eq('branch_id', currentUserBranchId);
-    const { data: expenses } = await supabase.from('expenses').select('amount, created_at').eq('branch_id', currentUserBranchId);
+    const { data: projects } = await supabase.from('projects').select('*');
+    const { data: payments } = await supabase.from('payments').select('amount, created_at');
 
-    let totalSales = 0, totalPaid = 0, totalExpenses = 0;
-    let todaySales = 0, todayPaid = 0, todayExpenses = 0;
+    let totalSales = 0, totalPaid = 0, todaySales = 0, todayPaid = 0;
     let sDesign = 0, sProd = 0, sFab = 0;
     const todayStr = new Date().toISOString().split('T')[0];
 
@@ -111,22 +106,11 @@ async function loadDashboardStats() {
         });
     }
 
-    if (expenses) {
-        expenses.forEach(exp => {
-            const amount = Number(exp.amount) || 0;
-            totalExpenses += amount;
-            if (exp.created_at && exp.created_at.split('T')[0] === todayStr) todayExpenses += amount;
-        });
-    }
-
     document.getElementById('stat-today-sales').innerText = `KSh ${todaySales.toLocaleString()}`;
     document.getElementById('stat-today-paid').innerText = `KSh ${todayPaid.toLocaleString()}`;
-    document.getElementById('stat-today-expenses').innerText = `KSh ${todayExpenses.toLocaleString()}`;
     document.getElementById('stat-today-balance').innerText = `KSh ${Math.max(0, todaySales - todayPaid).toLocaleString()}`;
-    
     document.getElementById('stat-total-sales').innerText = `KSh ${totalSales.toLocaleString()}`;
     document.getElementById('stat-total-paid').innerText = `KSh ${totalPaid.toLocaleString()}`;
-    document.getElementById('stat-total-expenses').innerText = `KSh ${totalExpenses.toLocaleString()}`;
     document.getElementById('stat-total-balance').innerText = `KSh ${Math.max(0, totalSales - totalPaid).toLocaleString()}`;
     
     document.getElementById('stat-design').innerText = sDesign;
@@ -137,14 +121,13 @@ async function loadDashboardStats() {
 // DATA: All Projects Table
 async function loadBranchProjects() {
     const tbody = document.getElementById('table-branch-projects');
-    
-    const { data: projects } = await supabase.from('projects').select(`*, customers (name), profiles (full_name)`).eq('branch_id', currentUserBranchId).order('created_at', { ascending: false });
-    const { data: payments } = await supabase.from('payments').select('project_id, amount').eq('branch_id', currentUserBranchId);
+    const { data: projects } = await supabase.from('projects').select(`*, customers (name), profiles (full_name)`).order('created_at', { ascending: false });
+    const { data: payments } = await supabase.from('payments').select('project_id, amount');
 
     tbody.innerHTML = '';
 
     if (!projects || projects.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-500">No projects found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No projects found.</td></tr>';
         return;
     }
 
@@ -182,7 +165,6 @@ async function loadBranchProjects() {
                     <div class="text-xs font-bold text-green-600">Paid: KSh ${paid.toLocaleString()}</div>
                     ${balance > 0 ? `<div class="text-xs font-bold text-red-600">Bal: KSh ${balance.toLocaleString()}</div>` : `<div class="text-xs font-bold text-green-700">Fully Paid</div>`}
                 </td>
-                <td class="p-4 text-sm text-gray-600">-</td>
                 <td class="p-4 text-right">
                     <button onclick="openPaymentModal('${p.id}')" class="text-xs bg-green-100 text-green-800 hover:bg-green-200 px-3 py-1.5 rounded font-bold transition shadow-sm">
                         + Add Payment
@@ -195,7 +177,7 @@ async function loadBranchProjects() {
 
 // DATA: Kanban Boards
 async function loadBoards() {
-    const { data: projects } = await supabase.from('projects').select(`*, customers (name), profiles (full_name)`).eq('branch_id', currentUserBranchId).neq('status', 'COMPLETED').order('created_at', { ascending: true });
+    const { data: projects } = await supabase.from('projects').select(`*, customers (name), profiles (full_name)`).neq('status', 'COMPLETED').order('created_at', { ascending: true });
 
     const gridDesign = document.getElementById('grid-design');
     const gridProd = document.getElementById('grid-production');
@@ -253,8 +235,7 @@ window.updateStatus = async function(id, newStatus) {
 // DATA: Payments Ledger
 async function loadPayments() {
     const tbody = document.getElementById('table-branch-payments');
-    
-    const { data: payments } = await supabase.from('payments').select(`*, projects (title, customers (name))`).eq('branch_id', currentUserBranchId).order('created_at', { ascending: false });
+    const { data: payments } = await supabase.from('payments').select(`*, projects (title, customers (name))`).order('created_at', { ascending: false });
 
     tbody.innerHTML = payments?.length ? payments.map(pay => `
         <tr class="hover:bg-gray-50 border-b text-sm">
@@ -267,27 +248,10 @@ async function loadPayments() {
     `).join('') : '<tr><td colspan="5" class="p-4 text-center text-gray-500">No payments logged yet.</td></tr>';
 }
 
-// DATA: Expenses Ledger
-async function loadExpenses() {
-    const tbody = document.getElementById('table-branch-expenses');
-    
-    const { data: expenses } = await supabase.from('expenses').select('*').eq('branch_id', currentUserBranchId).order('created_at', { ascending: false });
-
-    tbody.innerHTML = expenses?.length ? expenses.map(exp => `
-        <tr class="hover:bg-gray-50 border-b text-sm">
-            <td class="p-4 text-gray-500">${new Date(exp.created_at).toLocaleString()}</td>
-            <td class="p-4 font-bold text-gray-800">${exp.title}</td>
-            <td class="p-4 text-gray-600"><span class="bg-gray-100 px-2 py-1 rounded text-xs font-bold">${exp.category || 'MISC'}</span></td>
-            <td class="p-4 font-bold text-orange-600">KSh ${(Number(exp.amount)||0).toLocaleString()}</td>
-        </tr>
-    `).join('') : '<tr><td colspan="4" class="p-4 text-center text-gray-500">No expenses logged yet.</td></tr>';
-}
-
 // DATA: Clients
 async function loadClients() {
     const tbody = document.getElementById('table-branch-clients');
-    
-    const { data: clients } = await supabase.from('customers').select('*').eq('branch_id', currentUserBranchId).order('created_at', { ascending: false });
+    const { data: clients } = await supabase.from('customers').select('*').order('created_at', { ascending: false });
 
     tbody.innerHTML = clients?.length ? clients.map(c => `
         <tr class="hover:bg-gray-50 border-b">
@@ -303,8 +267,7 @@ async function loadClients() {
 async function openNewSaleModal() {
     const designerSelect = document.getElementById('sale-designer');
     designerSelect.innerHTML = '<option value="">Loading designers...</option>';
-    
-    const { data: profiles } = await supabase.from('profiles').select('id, full_name').eq('branch_id', currentUserBranchId);
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name');
     if (profiles && profiles.length === 1) {
         designerSelect.innerHTML = `<option value="${profiles[0].id}" selected>${profiles[0].full_name}</option>`;
     } else {
@@ -342,6 +305,7 @@ async function handleNewClient(e) {
     document.getElementById('modal-new-client').classList.add('hidden');
     document.getElementById('form-new-client').reset();
     refreshAllData();
+    alert("Client added successfully!");
 }
 
 // FORM: Submit New Sale
@@ -356,10 +320,8 @@ async function handleNewSale(e) {
 
     if (!customerId) return alert("Please select a client. If it's a new client, add them in the Clients tab first.");
 
-    const autoDisplayId = 'PRJ-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
+    // 1. Insert Project
     const { data: newProject, error: projErr } = await supabase.from('projects').insert([{
-        display_id: autoDisplayId,
         title: title,
         customer_id: customerId,
         branch_id: currentUserBranchId,
@@ -371,6 +333,7 @@ async function handleNewSale(e) {
 
     if(projErr) return alert("Error saving project: " + projErr.message);
 
+    // 2. Insert Payment Log
     if (paidAmount > 0) {
         await supabase.from('payments').insert([{
             project_id: newProject.id,
@@ -390,8 +353,7 @@ async function openPaymentModal(selectedProjectId = null) {
     const select = document.getElementById('payment-project-id');
     select.innerHTML = '<option value="">Loading...</option>';
 
-    const { data: projects } = await supabase.from('projects').select('id, title').eq('branch_id', currentUserBranchId);
-    
+    const { data: projects } = await supabase.from('projects').select('id, title');
     select.innerHTML = '<option value="">-- Select Project --</option>';
     if (projects) {
         projects.forEach(p => {
@@ -411,6 +373,7 @@ async function handleRecordPayment(e) {
 
     if (!projectId || amount <= 0) return alert("Please enter valid payment details.");
 
+    // 1. Insert into Payments Table
     const { error: payErr } = await supabase.from('payments').insert([{
         project_id: projectId,
         branch_id: currentUserBranchId,
@@ -420,6 +383,7 @@ async function handleRecordPayment(e) {
 
     if (payErr) return alert("Error recording payment: " + payErr.message);
 
+    // 2. Sync Projects paid_amount column
     const { data: proj } = await supabase.from('projects').select('paid_amount').eq('id', projectId).single();
     const newPaidTotal = (Number(proj?.paid_amount) || 0) + amount;
     
@@ -429,27 +393,15 @@ async function handleRecordPayment(e) {
     document.getElementById('form-add-payment').reset();
     refreshAllData();
 }
-
-// ACTION: Record Expense
-async function handleAddExpense(e) {
-    e.preventDefault();
-
-    const title = document.getElementById('expense-title').value;
-    const category = document.getElementById('expense-category').value;
-    const amount = Number(document.getElementById('expense-amount').value);
-
-    if (amount <= 0) return alert("Please enter a valid expense amount.");
-
-    const { error } = await supabase.from('expenses').insert([{
-        branch_id: currentUserBranchId,
-        title: title,
-        category: category,
-        amount: amount
-    }]);
-
-    if (error) return alert("Error recording expense: " + error.message);
-
-    document.getElementById('modal-add-expense').classList.add('hidden');
-    document.getElementById('form-add-expense').reset();
-    refreshAllData();
+// Register Service Worker for PWA
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+            .then(registration => {
+                console.log('Service Worker registered successfully with scope:', registration.scope);
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    });
 }
